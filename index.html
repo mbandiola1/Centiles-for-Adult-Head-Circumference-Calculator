@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adult Head Circumference Tool (Centile Chart with Documentation)</title>
-    <!-- Load Tailwind CSS and D3.js -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
@@ -77,7 +76,6 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
-            <!-- Input Card -->
             <div class="card bg-white p-6 sm:p-8 rounded-xl border border-gray-100 h-full">
                 <h2 class="text-2xl font-semibold text-indigo-700 mb-6 border-b pb-3">Input Measurements</h2>
                 
@@ -93,18 +91,16 @@
                     </div>
 
                     <div class="grid grid-cols-1 gap-6">
-                        <!-- Height Input: Switch to Feet/Inches/CM -->
                         <div id="height-input-container">
                             <label class="block text-sm font-medium text-gray-700 mb-2">Height</label>
                             <div class="flex space-x-3">
                                 <input type="number" step="1" id="height-ft" min="4" max="7" placeholder="Feet (e.g., 5)" class="block w-1/3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border">
                                 <input type="number" step="0.1" id="height-in" min="0" max="11.9" placeholder="Inches (e.g., 9)" class="block w-1/3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border">
-                                <input type="number" step="0.1" id="height-cm" min="140" max="200" placeholder="CM (e.g., 175.5)" class="block w-1/3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border">
+                                <input type="number" step="0.1" id="height-cm" min="140" max="200" placeholder="cm (e.g., 175.5)" class="block w-1/3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border">
                             </div>
-                            <p class="text-xs text-gray-400 mt-1">Enter height in either Ft/In OR CM. Range: 140-200 cm.</p>
+                            <p class="text-xs text-gray-400 mt-1">Enter height in Ft/In or cm. Fields will auto-convert. Range: 140-200 cm.</p>
                         </div>
                         
-                        <!-- Head Circumference Input -->
                         <div>
                             <label for="circumference" class="block text-sm font-medium text-gray-700 mb-1">Head Circumference (cm)</label>
                             <input type="number" step="0.1" id="circumference" min="40" max="70" placeholder="e.g., 57.0" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border" required>
@@ -117,17 +113,14 @@
                 </form>
             </div>
 
-            <!-- Chart Display -->
             <div class="card bg-white p-6 sm:p-8 rounded-xl border border-gray-100 flex flex-col justify-between">
                 <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-3">Centile Chart</h2>
                 <div id="chart-container" class="w-full" style="min-height: 350px;">
-                    <!-- D3 chart will be rendered here -->
                     <p id="chart-message" class="text-center text-gray-500 mt-16">Enter measurements above to generate the centile chart.</p>
                 </div>
             </div>
         </div>
 
-        <!-- Results Display -->
         <div id="results" class="card bg-white p-6 sm:p-8 rounded-xl border border-gray-100 mt-8 hidden">
             <h2 class="text-2xl font-semibold text-green-700 mb-6 border-b pb-3">Calculated Metrics</h2>
             
@@ -155,19 +148,15 @@
             </div>
         </div>
         
-        <!-- Error Message Box -->
         <div id="error-message" class="hidden mt-4 p-4 text-sm font-medium text-red-800 rounded-lg bg-red-50 border border-red-200" role="alert">
-            <!-- Error message will be injected here -->
-        </div>
+            </div>
 
-        <!-- Documentation Section (Updated for Plain Text) -->
         <div class="card bg-white p-6 sm:p-8 rounded-xl border border-gray-100 mt-8">
             <button id="toggle-methodology" class="w-full py-3 px-4 rounded-lg text-left font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition duration-150 ease-in-out flex justify-between items-center">
                 <span>Show Methodology & Documentation</span>
                 <span id="toggle-icon">+</span>
             </button>
             <div id="methodology-content" class="mt-4 p-4 border border-gray-200 rounded-lg hidden text-sm">
-                <!-- Clean, structured HTML content is injected here -->
                 <h3 class="text-lg font-bold mb-3">Methodology Report: Adult Head Circumference Centile Tool</h3>
                 
                 <p class="mb-3">This document outlines the statistical methodology and specific formulas used within the interactive web application for calculating adult head circumference (HC) Z-scores and centiles.</p>
@@ -220,6 +209,11 @@
             const errorMessageDiv = document.getElementById('error-message');
             const chartContainer = document.getElementById('chart-container');
             
+            // --- TWEAK 1: Get references to height inputs ---
+            const heightFtInput = document.getElementById('height-ft');
+            const heightInInput = document.getElementById('height-in');
+            const heightCmInput = document.getElementById('height-cm');
+            
             // --- CONSTANTS ---
             const SD = 1.41; 
             const SLOPE = 0.08673;
@@ -230,6 +224,9 @@
             // Height conversion factors
             const CM_PER_FOOT = 30.48;
             const CM_PER_INCH = 2.54;
+            
+            // --- TWEAK 1: Flag to prevent conversion loops ---
+            let isConverting = false;
 
             // --- CHART SETUP ---
             let svg, xScale, yScale;
@@ -447,17 +444,20 @@
                 const labelText = `Your HC (${percentile.toFixed(1)}%)`;
                 label.attr("x", xPos).attr("y", yPos - 18).text(labelText);
                 
-                // Calculate text dimensions (approximate text width/height for the background box)
-                const textWidth = labelText.length * 7; 
-                const textHeight = 18;
+                // --- TWEAK 2: Use getBBox() for precise label background ---
+                // Calculate text dimensions AFTER rendering the text
+                const textBBox = label.node().getBBox();
+                const textWidth = textBBox.width; 
+                const textHeight = textBBox.height;
                 const padding = 6;
                 
                 labelBg
-                    .attr("x", xPos - (textWidth / 2) - padding / 2)
-                    .attr("y", yPos - 18 - textHeight + 5) // Adjust position to center behind text
+                    .attr("x", textBBox.x - padding / 2)
+                    .attr("y", textBBox.y - padding / 2)
                     .attr("width", textWidth + padding)
                     .attr("height", textHeight + padding)
                     .attr("opacity", 1);
+                // --- End Tweak 2 ---
 
 
                 // 4. Show all elements
@@ -488,32 +488,71 @@
 
             // --- HEIGHT CONVERSION AND VALIDATION ---
 
+            // --- TWEAK 1: Function to convert cm to ft/in ---
+            function convertCmToImperial(cm) {
+                if (isConverting || isNaN(cm) || cm < 140 || cm > 200) {
+                    if (isNaN(cm) || cm < 140 || cm > 200) {
+                         // If cm is invalid or out of range, clear ft/in
+                        isConverting = true;
+                        heightFtInput.value = '';
+                        heightInInput.value = '';
+                        isConverting = false;
+                    }
+                    return;
+                }
+                isConverting = true;
+                const totalInches = cm / CM_PER_INCH;
+                const feet = Math.floor(totalInches / 12);
+                const inches = (totalInches % 12).toFixed(1);
+                
+                heightFtInput.value = feet;
+                heightInInput.value = inches;
+                isConverting = false;
+            }
+            
+            // --- TWEAK 1: Function to convert ft/in to cm ---
+            function convertImperialToCm() {
+                if (isConverting) return;
+                isConverting = true;
+                const ft = parseFloat(heightFtInput.value) || 0;
+                const inches = parseFloat(heightInInput.value) || 0;
+                
+                if (ft === 0 && inches === 0) {
+                     heightCmInput.value = '';
+                     isConverting = false;
+                     return;
+                }
+                
+                const calculatedCm = (ft * CM_PER_FOOT) + (inches * CM_PER_INCH);
+                
+                if (calculatedCm >= 140 && calculatedCm <= 200) {
+                    heightCmInput.value = calculatedCm.toFixed(1);
+                } else {
+                     heightCmInput.value = ''; // Clear if out of range
+                }
+                isConverting = false;
+            }
+            
+            // --- TWEAK 1: Event listeners for height inputs ---
+            heightCmInput.addEventListener('input', () => {
+                convertCmToImperial(parseFloat(heightCmInput.value));
+            });
+            heightFtInput.addEventListener('input', convertImperialToCm);
+            heightInInput.addEventListener('input', convertImperialToCm);
+
+
             /**
-             * Converts feet/inches inputs to centimeters, or uses the CM input directly.
-             * @returns {number | null} Height in CM, or null if input is invalid.
+             * Gets the validated height in CM from the input fields.
+             * @returns {number | null} Height in cm, or null if input is invalid.
              */
             function getValidatedHeightCm() {
-                const ft = parseFloat(document.getElementById('height-ft').value) || 0;
-                const inches = parseFloat(document.getElementById('height-in').value) || 0;
-                const cm = parseFloat(document.getElementById('height-cm').value);
+                const cm = parseFloat(heightCmInput.value); // Use the cm input as the source of truth
                 
-                let calculatedCm = null;
-
-                // 1. Prioritize CM input if it exists and is valid
-                if (!isNaN(cm) && cm > 0) {
-                    calculatedCm = cm;
-                } 
-                // 2. Use Ft/In conversion if CM is empty but Ft/In are provided
-                else if (ft > 0 || inches > 0) {
-                    calculatedCm = (ft * CM_PER_FOOT) + (inches * CM_PER_INCH);
-                }
-
-                // 3. Validation against the study's reasonable range (140-200 cm)
-                if (calculatedCm === null || calculatedCm < 140 || calculatedCm > 200) {
+                if (isNaN(cm) || cm < 140 || cm > 200) {
                     return null;
                 }
                 
-                return calculatedCm;
+                return cm;
             }
 
 
@@ -528,13 +567,36 @@
                 }
             }
 
+            // --- TWEAK 3: Refactor CDF calculation into its own function ---
+            /**
+             * Converts a Z-score to a percentile rank using a CDF approximation.
+             * @param {number} zScore - The Z-score.
+             * @returns {number} The percentile (0-100).
+             */
+            function zScoreToPercentile(zScore) {
+                const b1 = 0.319381530;
+                const b2 = -0.356563782;
+                const b3 = 1.781477937;
+                const b4 = -1.821255978;
+                const b5 = 1.330274429;
+                const p = 0.2316419;
+                const c = 0.39894228;
+
+                const t = 1 / (1 + p * Math.abs(zScore));
+                const zt = c * Math.exp((-zScore * zScore) / 2);
+                let percentile = zt * ((((b5 * t + b4) * t + b3) * t + b2) * t + b1) * t;
+
+                percentile = zScore >= 0 ? (1 - percentile) : percentile;
+                return percentile * 100;
+            }
+            // --- End Tweak 3 ---
+
             
             /**
              * Calculates the Z-Score and Percentile for Adult Head Circumference (HC).
              */
             function calculateCircumference(gender, height, circumference) {
-                const SLOPE = 0.08673;
-                const SD = 1.41; 
+                // Constants are now defined at the top
                 let meanHC; 
 
                 // 1. Calculate Expected Mean HC (mu)
@@ -549,21 +611,8 @@
                 // 2. Calculate Z-Score
                 const zScore = (circumference - meanHC) / SD;
 
-                // 3. Calculate Percentile (CDF approximation)
-                const b1 = 0.319381530;
-                const b2 = -0.356563782;
-                const b3 = 1.781477937;
-                const b4 = -1.821255978;
-                const b5 = 1.330274429;
-                const p = 0.2316419;
-                const c = 0.39894228;
-
-                const t = 1 / (1 + p * Math.abs(zScore));
-                const zt = c * Math.exp((-zScore * zScore) / 2);
-                let percentile = zt * ((((b5 * t + b4) * t + b3) * t + b2) * t + b1) * t;
-
-                percentile = zScore >= 0 ? (1 - percentile) : percentile;
-                percentile = percentile * 100;
+                // 3. Calculate Percentile (using the new helper function)
+                const percentile = zScoreToPercentile(zScore);
 
                 // 4. Determine Interpretation (SIMPLIFIED TEXT)
                 let interpretation;
@@ -595,7 +644,7 @@
                 const circumference = parseFloat(document.getElementById('circumference').value);
 
                 if (!gender || heightCm === null || isNaN(circumference)) {
-                    displayMessage("Please ensure gender is selected, a valid Head Circumference is entered, and height is entered (either in Ft/In or CM) within the 140-200 cm range.", true);
+                    displayMessage(`Please ensure gender is selected, a valid Head Circumference is entered, and height is entered (either in Ft/In or cm) within the 140-200 cm range.`, true);
                     // Hide plot marker if validation fails
                     d3.select("#subject-marker-group").attr("opacity", 0);
                     d3.select("#intersection-lines-group").attr("opacity", 0);
@@ -656,7 +705,12 @@
                 const isHidden = methodologyContent.classList.toggle('hidden');
                 toggleIcon.textContent = isHidden ? '+' : '—';
             });
-
+            
+            // --- Update documentation text to use 'cm' ---
+            document.querySelectorAll('#methodology-content p, #methodology-content li').forEach(el => {
+                el.innerHTML = el.innerHTML.replace(/Height in cm/g, 'Height in cm');
+                el.innerHTML = el.innerHTML.replace(/SD = 1.41 cm/g, 'SD = 1.41 cm');
+            });
 
         });
     </script>

@@ -7,6 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.3/jstat.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
     <style>
         /* Custom styles */
         body {
@@ -14,7 +17,7 @@
             background-color: #f7f9fb;
         }
         .card {
-            box-shadow: 0 10px 30px rgba(0 0, 0, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
         }
         /* Chart specific styles */
@@ -184,15 +187,22 @@
                 <h4 class="text-base font-semibold mb-2 border-b">II. The Calculation Steps (Constant SD)</h4>
 
                 <p class="font-bold">Step 1: Calculate the Expected Mean HC ($\mu$)</p>
-                <p class="font-mono bg-gray-100 p-2 rounded-md">Males: $\mu = 42.4 + (0.08673 \times \text{Height in cm})$</p>
-                <p class="font-mono bg-gray-100 mb-4 p-2 rounded-md">Females: $\mu = 41.02 + (0.08673 \times \text{Height in cm})$</p>
+                <p class="font-mono bg-gray-100 p-2 rounded-md">
+                    Males: $$\mu = 42.4 + (0.08673 \times \text{Height in cm})$$
+                </p>
+                <p class="font-mono bg-gray-100 mb-4 p-2 rounded-md">
+                    Females: $$\mu = 41.02 + (0.08673 \times \text{Height in cm})$$
+                </p>
 
                 <p class="font-bold">Step 2: Calculate the Z-Score</p>
-                <p>The Z-Score (Z) is calculated using the measured HC, the mean $\mu$, and the constant SD:</p>
-                <p class="font-mono bg-gray-100 mb-4 p-2 rounded-md">Z = (\text{Measured HC} - \mu) / 1.41</p>
+                <p>The Z-Score ($Z$) is calculated using the measured HC, the mean $\mu$, and the constant SD ($\sigma$):</p>
+                <p class="font-mono bg-gray-100 mb-4 p-2 rounded-md">
+                    $$Z = \frac{\text{Measured HC} - \mu}{\sigma}$$
+                    $$Z = \frac{\text{Measured HC} - \mu}{1.41}$$
+                </p>
 
                 <p class="font-bold">Step 3: Calculate the Centile Rank</p>
-                <p class="mb-4">The centile rank (percentile) is derived by converting the Z-score using the highly accurate **Cumulative Distribution Function (CDF)** via the `jStat.normal.cdf` function.</p>
+                <p class="mb-4">The centile rank (percentile) is derived by converting the Z-score using the highly accurate **Cumulative Distribution Function ($\Phi$)** of the Standard Normal Distribution: $$P = \Phi(Z) \times 100$$</p>
 
                 <h4 class="text-base font-semibold mb-2 border-b">III. Interpretation Thresholds (Clinical Standard: $\mathbf{\pm 2.0 \text{ SD}}$)</h4>
                 <p class="mb-2">The thresholds below reflect the standard clinical $\pm 2.0 \text{ SD}$ criteria for abnormality:</p>
@@ -201,7 +211,7 @@
                     <li>**Z $\mathbf{< -2.0 \text{ SD}}$:** Head circumference is **significantly small** for stature (Microcephaly). (Red)</li>
                     <li>**Z between $\mathbf{-2.0 \text{ SD}}$ and $\mathbf{+2.0 \text{ SD}}$:** Head circumference is **within the expected average range** (Normocephaly). (Green)</li>
                 </ul>
-                </div>
+            </div>
         </div>
 
     </div>
@@ -237,7 +247,7 @@
             let isConverting = false;
             
             // ----------------------------------------------------------------------
-            // INITIAL SETUP: Clear the form on load
+            // INITIAL SETUP: Clear the form on load & Clear button handler
             // ----------------------------------------------------------------------
             function resetForm() {
                 genderInput.value = "";
@@ -346,7 +356,7 @@
             }
 
             // ----------------------------------------------------------------------
-            // CHART SETUP (No changes needed here)
+            // CHART SETUP 
             // ----------------------------------------------------------------------
             let svg, xScale, yScale;
             const margin = { top: 20, right: 25, bottom: 40, left: 50 };

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adult Head Circumference Tool (Model 1 - Constant SD)</title>
+    <title>Adult Head Circumference Tool </title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.3/jstat.min.js"></script>
@@ -14,7 +14,7 @@
             background-color: #f7f9fb;
         }
         .card {
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 30px rgba(0 0, 0, 0.05);
             transition: all 0.3s ease;
         }
         /* Chart specific styles */
@@ -101,12 +101,15 @@
 
                         <div>
                             <label for="circumference" class="block text-sm font-medium text-gray-700 mb-1">Head Circumference (cm)</label>
-                            <input type="number" step="0.1" id="circumference" min="40" max="70" placeholder="e.g., 57.0" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border" required>
+                            <input type="number" step="0.1" id="circumference" min="40" max="70" placeholder="e.g., 57.0" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border">
                         </div>
                     </div>
 
-                    <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                    <button type="submit" id="calculate-button" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
                         Calculate & Plot
+                    </button>
+                    <button type="button" id="clear-button" class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                        Clear Form
                     </button>
                 </form>
             </div>
@@ -125,7 +128,7 @@
             <div class="space-y-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                 <div class="p-3 bg-gray-50 rounded-lg">
-                    <span class="block text-sm font-medium text-gray-700">Expected Mean HC (Mean):</span>
+                    <span class="block text-sm font-medium text-gray-700">Expected Mean HC ($\mu$):</span>
                     <span id="mean-output" class="text-xl font-bold text-gray-800">--</span>
                 </div>
 
@@ -145,6 +148,16 @@
                 </div>
             </div>
         </div>
+        
+        <div id="calculating-message" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg shadow-2xl flex items-center space-x-3">
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-lg font-medium text-gray-800">Calculating...</p>
+            </div>
+        </div>
 
         <div id="error-message" class="hidden mt-4 p-4 text-sm font-medium text-red-800 rounded-lg bg-red-50 border border-red-200" role="alert">
             </div>
@@ -157,14 +170,14 @@
             <div id="methodology-content" class="mt-4 p-4 border border-gray-200 rounded-lg hidden text-sm">
                 <h3 class="text-lg font-bold mb-3">Methodology Report: Adult Head Circumference Centile Tool (Model 1)</h3>
 
-                <p class="mb-3">This tool is based on the linear regression model published in the study: <strong>Bushby et al. (1992)</strong>, assuming a **constant Standard Deviation (SD)** as justified by the authors' final analysis.</p>
+                <p class="mb-3">This tool is based on the linear regression model published in the study: <strong>Bushby et al. (1992)</strong>, assuming a **constant Standard Deviation ($\sigma$)** as justified by the authors' final analysis.</p>
 
                 <h4 class="text-base font-semibold mb-2 border-b">I. Core Statistical Model</h4>
                 <p>The calculation relies on three confirmed parameters extracted from the paper:</p>
 
                 <ol class="list-decimal pl-6 space-y-1 mb-4">
                     <li>**Expected Mean Head Circumference ($\mu$):** A gender-specific linear regression equation based on the subject's height.</li>
-                    <li>**Standard Deviation ($\sigma$):** A constant measure of scatter around the mean line ($\text{SD} = 1.41 \text{ cm}$).</li>
+                    <li>**Standard Deviation ($\sigma$):** A constant measure of scatter around the mean line ($\mathbf{\sigma = 1.41 \text{ cm}}$).</li>
                     <li>**Z-Score:** The number of standard deviations the subject's measurement falls above or below the mean.</li>
                 </ol>
 
@@ -176,17 +189,17 @@
 
                 <p class="font-bold">Step 2: Calculate the Z-Score</p>
                 <p>The Z-Score (Z) is calculated using the measured HC, the mean $\mu$, and the constant SD:</p>
-                <p class="font-mono bg-gray-100 mb-4 p-2 rounded-md">Z = (Measured HC - $\mu$) / 1.41</p>
+                <p class="font-mono bg-gray-100 mb-4 p-2 rounded-md">Z = (\text{Measured HC} - \mu) / 1.41</p>
 
                 <p class="font-bold">Step 3: Calculate the Centile Rank</p>
                 <p class="mb-4">The centile rank (percentile) is derived by converting the Z-score using the highly accurate **Cumulative Distribution Function (CDF)** via the `jStat.normal.cdf` function.</p>
 
-                <h4 class="text-base font-semibold mb-2 border-b">III. Interpretation Thresholds (Clinical Standard)</h4>
+                <h4 class="text-base font-semibold mb-2 border-b">III. Interpretation Thresholds (Clinical Standard: $\mathbf{\pm 2.0 \text{ SD}}$)</h4>
                 <p class="mb-2">The thresholds below reflect the standard clinical $\pm 2.0 \text{ SD}$ criteria for abnormality:</p>
                 <ul class="list-disc pl-6 space-y-1">
-                    <li>**Z > +2.0 SD:** **Macrocephaly** (Requires Clinical Review, Red)</li>
-                    <li>**Z < -2.0 SD:** **Microcephaly** (Requires Clinical Review, Red)</li>
-                    <li>**Z = -2.0 to +2.0 SD:** **Normocephaly** (Within Expected Range, Green)</li>
+                    <li>**Z $\mathbf{\geq +2.0 \text{ SD}}$:** Head circumference is **significantly large** for stature (Macrocephaly). (Red)</li>
+                    <li>**Z $\mathbf{< -2.0 \text{ SD}}$:** Head circumference is **significantly small** for stature (Microcephaly). (Red)</li>
+                    <li>**Z between $\mathbf{-2.0 \text{ SD}}$ and $\mathbf{+2.0 \text{ SD}}$:** Head circumference is **within the expected average range** (Normocephaly). (Green)</li>
                 </ul>
                 </div>
         </div>
@@ -199,23 +212,142 @@
             const resultsDiv = document.getElementById('results');
             const errorMessageDiv = document.getElementById('error-message');
             const chartContainer = document.getElementById('chart-container');
+            const calculatingMessage = document.getElementById('calculating-message');
 
+            const genderInput = document.getElementById('gender');
+            const circumferenceInput = document.getElementById('circumference');
             const heightFtInput = document.getElementById('height-ft');
             const heightInInput = document.getElementById('height-in');
             const heightCmInput = document.getElementById('height-cm');
+            const clearButton = document.getElementById('clear-button');
 
             // --- CONSTANTS (Model 1) ---
-            const SD = 1.41; // *** Constant Standard Deviation ***
+            const SD = 1.41; // *** Constant Standard Deviation - FIXED ***
             const SLOPE = 0.08673;
             const INTERCEPTS = { male: 42.4, female: 41.02 };
             const Z_SCORES = { 3: -1.88, 10: -1.28, 25: -0.67, 50: 0, 75: 0.67, 90: 1.28, 97: 1.88 };
 
+            // *** CLINICAL THRESHOLD CONSTANTS for JavaScript logic (STRICT +/- 2.0 SD) ***
+            const MACRO_RED_Z = 2.0;
+            const MICRO_RED_Z = -2.0;
+            
             const CM_PER_FOOT = 30.48;
             const CM_PER_INCH = 2.54;
 
             let isConverting = false;
+            
+            // ----------------------------------------------------------------------
+            // INITIAL SETUP: Clear the form on load
+            // ----------------------------------------------------------------------
+            function resetForm() {
+                genderInput.value = "";
+                circumferenceInput.value = "";
+                heightFtInput.value = "";
+                heightInInput.value = "";
+                heightCmInput.value = "";
+                
+                resultsDiv.classList.add('hidden');
+                errorMessageDiv.classList.add('hidden');
+                d3.select("#subject-marker-group").attr("opacity", 0);
+                d3.select("#intersection-lines-group").attr("opacity", 0);
+                d3.select("#chart-message").text("Enter measurements above to generate the centile chart.");
+            }
+            
+            resetForm(); // Call on load
 
-            // --- CHART SETUP (No changes needed here) ---
+            // ----------------------------------------------------------------------
+            // CONVERSION & VALIDATION FUNCTIONS
+            // ----------------------------------------------------------------------
+
+            function convertFtInToCm(ft, inches) {
+                return (ft * 12 + inches) * CM_PER_INCH;
+            }
+
+            function getValidatedHeightCm() {
+                let cm = parseFloat(heightCmInput.value);
+                const ft = parseFloat(heightFtInput.value);
+                const inches = parseFloat(heightInInput.value);
+
+                if (!isNaN(cm) && cm >= 140 && cm <= 200) {
+                    return cm;
+                }
+                
+                if (!isNaN(ft) && !isNaN(inches)) {
+                    cm = convertFtInToCm(ft, inches);
+                    if (cm >= 140 && cm <= 200) {
+                        return cm;
+                    }
+                }
+                
+                return null;
+            }
+
+            function updateHeightInputs(sourceInput, value) {
+                if (isConverting) return;
+                isConverting = true;
+                
+                if (sourceInput === 'cm' && !isNaN(value)) {
+                    const totalInches = value / CM_PER_INCH;
+                    heightFtInput.value = Math.floor(totalInches / 12);
+                    heightInInput.value = (totalInches % 12).toFixed(1);
+                } else if ((sourceInput === 'ft' || sourceInput === 'in') && !isNaN(parseFloat(heightFtInput.value)) && !isNaN(parseFloat(heightInInput.value))) {
+                    const cm = convertFtInToCm(parseFloat(heightFtInput.value), parseFloat(heightInInput.value));
+                    heightCmInput.value = cm.toFixed(1);
+                }
+                
+                isConverting = false;
+            }
+
+            // Event listeners for height conversion
+            heightCmInput.addEventListener('input', () => updateHeightInputs('cm', parseFloat(heightCmInput.value)));
+            heightFtInput.addEventListener('input', () => updateHeightInputs('ft', parseFloat(heightFtInput.value)));
+            heightInInput.addEventListener('input', () => updateHeightInputs('in', parseFloat(heightInInput.value)));
+            
+            // Clear button listener
+            clearButton.addEventListener('click', resetForm);
+
+            // ----------------------------------------------------------------------
+            // CORE CALCULATION
+            // ----------------------------------------------------------------------
+            function calculateCircumference(gender, height, circumference) {
+                // Step 1: Calculate Expected Mean HC (mu)
+                const mu = INTERCEPTS[gender] + (SLOPE * height);
+
+                // Step 2: Calculate Z-Score
+                const zScore = (circumference - mu) / SD;
+
+                // Step 3: Calculate Centile Rank
+                const percentile = jStat.normal.cdf(zScore, 0, 1) * 100;
+
+                // Step 4: Determine Interpretation (STRICT +/- 2.0 SD)
+                let classification = '';
+                let interpretationClass = '';
+                
+                if (zScore >= MACRO_RED_Z) {
+                    classification = `Significantly large HC for stature (Macrocephaly).`;
+                    interpretationClass = 'bg-red-200 text-red-900';
+                } else if (zScore < MICRO_RED_Z) {
+                    classification = `Significantly small HC for stature (Microcephaly).`;
+                    interpretationClass = 'bg-red-200 text-red-900';
+                } else {
+                    classification = `Within the expected average range (Normocephaly).`;
+                    interpretationClass = 'bg-green-200 text-green-900';
+                }
+                
+                let interpretation = `Z-Score of ${zScore.toFixed(2)} SD (${percentile.toFixed(1)}%). ${classification}`;
+
+                return {
+                    mu: mu,
+                    zScore: zScore,
+                    percentile: percentile,
+                    interpretation: interpretation,
+                    interpretationClass: interpretationClass
+                };
+            }
+
+            // ----------------------------------------------------------------------
+            // CHART SETUP (No changes needed here)
+            // ----------------------------------------------------------------------
             let svg, xScale, yScale;
             const margin = { top: 20, right: 25, bottom: 40, left: 50 };
             let width, height;
@@ -347,142 +479,66 @@
                 }
             });
 
-            // --- HEIGHT CONVERSION ---
-            function convertCmToImperial(cm) {
-                if (isConverting || isNaN(cm) || cm < 140 || cm > 200) {
-                    if (isNaN(cm) || cm < 140 || cm > 200) {
-                        isConverting = true; heightFtInput.value = ''; heightInInput.value = ''; isConverting = false;
-                    } return;
-                }
-                isConverting = true;
-                const totalInches = cm / CM_PER_INCH;
-                heightFtInput.value = Math.floor(totalInches / 12);
-                heightInInput.value = (totalInches % 12).toFixed(1);
-                isConverting = false;
-            }
-            function convertImperialToCm() {
-                 if (isConverting) return;
-                isConverting = true;
-                const ft = parseFloat(heightFtInput.value) || 0;
-                const inches = parseFloat(heightInInput.value) || 0;
-                if (ft === 0 && inches === 0) { heightCmInput.value = ''; isConverting = false; return; }
-                const calculatedCm = (ft * CM_PER_FOOT) + (inches * CM_PER_INCH);
-                heightCmInput.value = (calculatedCm >= 140 && calculatedCm <= 200) ? calculatedCm.toFixed(1) : '';
-                isConverting = false;
-            }
-            heightCmInput.addEventListener('input', () => convertCmToImperial(parseFloat(heightCmInput.value)));
-            heightFtInput.addEventListener('input', convertImperialToCm);
-            heightInInput.addEventListener('input', convertImperialToCm);
-
-            function getValidatedHeightCm() {
-                const cm = parseFloat(heightCmInput.value);
-                return (isNaN(cm) || cm < 140 || cm > 200) ? null : cm;
-            }
-
-            // --- UTILITIES ---
-            function displayMessage(message, isError = false) {
-                 errorMessageDiv.classList.toggle('hidden', !isError);
-                if (isError) { errorMessageDiv.innerHTML = message; resultsDiv.classList.add('hidden'); }
-                else { errorMessageDiv.classList.add('hidden'); }
-            }
-
-            // Main Calculation Function (Model 1 - Constant SD, using jStat)
-            function calculateCircumference(gender, height, circumference) {
-                let meanHC;
-                if (gender === 'male') {
-                    meanHC = INTERCEPTS.male + (SLOPE * height);
-                } else if (gender === 'female') {
-                    meanHC = INTERCEPTS.female + (SLOPE * height);
-                } else {
-                    throw new Error("Invalid gender.");
-                }
-
-                // *** Use Constant SD for Z-Score ***
-                const zScore = (circumference - meanHC) / SD;
-
-                // *** Use jStat for accurate percentile calculation ***
-                const percentile = jStat.normal.cdf(zScore, 0, 1) * 100;
-
-                // *** FINAL CORRECTED INTERPRETATION LOGIC ***
-                let interpretation = "";
-
-                if (zScore > 3.0) { 
-                    interpretation = `Z > +3.0 SD. SEVERE MACROCEPHALY.`;
-                } else if (zScore < -3.0) { 
-                    interpretation = `Z < -3.0 SD. SEVERE MICROCEPHALY.`;
-                } else if (zScore > 2.0) { 
-                    interpretation = `Z > +2.0 SD. MACROCEPHALY. Requires Clinical Review.`;
-                } else if (zScore < -2.0) { 
-                    interpretation = `Z < -2.0 SD. MICROCEPHALY. Requires Clinical Review.`;
-                } else {
-                    // This covers the entire clinically expected range from -2.0 to +2.0 SD
-                    interpretation = `Head circumference is within the typical expected range (Normocephaly).`;
-                }
-
-                return { zScore, percentile, interpretation, meanHC };
-            }
-
-            // --- FORM SUBMISSION ---
-            form.addEventListener('submit', (e) => {
+            // ----------------------------------------------------------------------
+            // FORM SUBMISSION HANDLER
+            // ----------------------------------------------------------------------
+            form.addEventListener('submit', function(e) {
                 e.preventDefault();
-                displayMessage("", false);
-                const gender = document.getElementById('gender').value;
-                const heightCm = getValidatedHeightCm();
-                const circumference = parseFloat(document.getElementById('circumference').value);
+                errorMessageDiv.classList.add('hidden');
 
-                if (!gender || heightCm === null || isNaN(circumference)) {
-                    displayMessage(`Please ensure all fields are valid and height is 140-200 cm.`, true);
-                    d3.select("#subject-marker-group").attr("opacity", 0);
-                    d3.select("#intersection-lines-group").attr("opacity", 0);
+                const gender = genderInput.value;
+                const circumference = parseFloat(circumferenceInput.value);
+                const heightValue = getValidatedHeightCm();
+                
+                if (!gender || isNaN(circumference) || !heightValue) {
+                    errorMessageDiv.textContent = "Please ensure a gender, head circumference, and valid height (140-200 cm) are entered.";
+                    errorMessageDiv.classList.remove('hidden');
+                    resultsDiv.classList.add('hidden');
                     return;
                 }
 
-                try {
-                    const { zScore, percentile, interpretation, meanHC } = calculateCircumference(gender, heightCm, circumference);
-                    document.getElementById('mean-output').textContent = meanHC.toFixed(2) + ' cm';
-                    document.getElementById('z-score-output').textContent = zScore.toFixed(2);
-                    document.getElementById('percentile-output').textContent = `${percentile.toFixed(1)}%`;
-                    document.getElementById('interpretation-output').textContent = interpretation;
+                // Show 'Calculating...' message
+                calculatingMessage.classList.remove('hidden');
 
-                    const interpBox = document.getElementById('interpretation-box');
-                    interpBox.className = 'p-4 rounded-lg border'; // Reset classes
+                // 1. Run Calculation (using a timeout for effect, usually instant)
+                setTimeout(() => {
+                    const { mu, zScore, percentile, interpretation, interpretationClass } = calculateCircumference(gender, heightValue, circumference);
+
+                    // 2. Update Outputs
+                    document.getElementById('mean-output').textContent = `${mu.toFixed(1)} cm`;
+                    document.getElementById('z-score-output').textContent = `${zScore.toFixed(2)} SD`;
+                    document.getElementById('percentile-output').textContent = `${percentile.toFixed(1)} %`;
                     
-                    // *** FINAL CORRECTED COLOR-CODING LOGIC ***
-                    if (zScore > 2.0 || zScore < -2.0) {
-                         interpBox.classList.add('bg-red-100', 'border-red-300'); // Macro/Microcephaly
-                    } else {
-                         interpBox.classList.add('bg-green-100', 'border-green-300'); // Normocephaly
-                    }
-                    // *****************************************
+                    const interpretationBox = document.getElementById('interpretation-box');
+                    document.getElementById('interpretation-output').textContent = interpretation;
+                    
+                    // Reset class and apply the new one
+                    interpretationBox.className = 'p-4 rounded-lg ' + interpretationClass;
+
+
+                    // 3. Update Chart
+                    setupChart(gender);
+                    plotSubject(heightValue, circumference, percentile);
 
                     resultsDiv.classList.remove('hidden');
-                    setupChart(gender);
-                    plotSubject(heightCm, circumference, percentile);
-
-                } catch (error) { console.error(error); displayMessage(error.message, true); }
+                    calculatingMessage.classList.add('hidden'); // Hide 'Calculating...'
+                }, 100); // Small delay for visual feedback
             });
+            
+            // --- METHODOLOGY TOGGLE ---
+            document.getElementById('toggle-methodology').addEventListener('click', function() {
+                const content = document.getElementById('methodology-content');
+                const icon = document.getElementById('toggle-icon');
+                const isHidden = content.classList.contains('hidden');
 
-            // Gender change redraws chart
-            document.getElementById('gender').addEventListener('change', (e) => {
-                 if (e.target.value) setupChart(e.target.value);
-                 d3.select("#subject-marker-group").attr("opacity", 0);
-                 d3.select("#intersection-lines-group").attr("opacity", 0);
+                if (isHidden) {
+                    content.classList.remove('hidden');
+                    icon.textContent = '-';
+                } else {
+                    content.classList.add('hidden');
+                    icon.textContent = '+';
+                }
             });
-
-            // --- DOCUMENTATION TOGGLE ---
-            const toggleButton = document.getElementById('toggle-methodology');
-            const methodologyContent = document.getElementById('methodology-content');
-            const toggleIcon = document.getElementById('toggle-icon');
-            toggleButton.addEventListener('click', () => {
-                const isHidden = methodologyContent.classList.toggle('hidden');
-                toggleIcon.textContent = isHidden ? '+' : '—';
-            });
-
-            // Initial setup for demonstration (optional)
-            document.getElementById('gender').value = 'male';
-            document.getElementById('height-cm').value = '175.7';
-            convertCmToImperial(175.7);
-            document.getElementById('circumference').value = '57.6'; // Near 50th centile
 
         });
     </script>

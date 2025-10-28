@@ -1,205 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adult Head Circumference Tool (Model 1 - Constant SD)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.3/jstat.min.js"></script>
-    <style>
-        /* Custom styles */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f7f9fb;
-        }
-        .card {
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
-        }
-        /* Chart specific styles */
-
-        .axis text { font-size: 11px; }
-        .axis line { stroke: #ccc; }
-        .axis path { stroke: #ccc; }
-
-        /* Style for the gridlines */
-        .grid line {
-            stroke: #d1d5db;
-            shape-rendering: crispEdges;
-        }
-        .grid path {
-            stroke-width: 0;
-        }
-
-        /* Style for the 'X' marker */
-        #subject-marker {
-            transition: opacity 0.5s;
-        }
-        #subject-marker .line {
-            stroke: #ef4444;
-            stroke-width: 4;
-            stroke-linecap: round;
-        }
-        .intersection-line {
-            stroke-dasharray: 4, 2;
-            transition: opacity 0.5s;
-        }
-
-        /* Style for the background box behind the subject label */
-        .label-bg {
-            fill: rgba(255, 255, 255, 0.85);
-            stroke: #ef4444;
-            stroke-width: 1;
-            rx: 3;
-        }
-    </style>
-</head>
-<body class="p-4 md:p-8 min-h-screen flex flex-col items-center justify-center">
-
-    <div id="app" class="w-full max-w-4xl">
-
-        <h1 class="text-3xl sm:text-4xl font-extrabold text-center text-gray-800 mb-2">
-            Adult Head Circumference Centile Tool (Model 1 - Constant SD)
-        </h1>
-        <p class="text-center text-sm text-gray-500 mb-1">
-            Calculation and Centile Chart based on
-            <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC1793909/" target="_blank" class="text-indigo-600 hover:text-indigo-800 underline font-semibold">
-                Bushby et al. (1992) Centiles for adult head circumference.
-            </a>
-        </p>
-        <p class="text-center text-xs text-red-600 mb-8 font-semibold p-1 border border-red-200 bg-red-50 rounded-lg max-w-lg mx-auto">
-            Disclaimer: This tool is for reference only and does not provide a definitive clinical diagnosis.
-        </p>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-            <div class="card bg-white p-6 sm:p-8 rounded-xl border border-gray-100 h-full">
-                <h2 class="text-2xl font-semibold text-indigo-700 mb-6 border-b pb-3">Input Measurements</h2>
-
-                <form id="circumference-form" class="space-y-6">
-
-                    <div>
-                        <label for="gender" class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                        <select id="gender" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg border" required>
-                            <option value="">Select Gender</option>
-                            <option value="male">Male</option>
-                            <option value="female">Female</option>
-                        </select>
-                    </div>
-
-                    <div class="grid grid-cols-1 gap-6">
-                        <div id="height-input-container">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Height</label>
-                            <div class="flex space-x-3">
-                                <input type="number" step="1" id="height-ft" min="4" max="7" placeholder="Feet (e.g., 5)" class="block w-1/3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border">
-                                <input type="number" step="0.1" id="height-in" min="0" max="11.9" placeholder="Inches (e.g., 9)" class="block w-1/3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border">
-                                <input type="number" step="0.1" id="height-cm" min="140" max="200" placeholder="cm (e.g., 175.5)" class="block w-1/3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border">
-                            </div>
-                            <p class="text-xs text-gray-400 mt-1">Enter height in Ft/In or cm. Fields will auto-convert. Range: 140-200 cm.</p>
-                        </div>
-
-                        <div>
-                            <label for="circumference" class="block text-sm font-medium text-gray-700 mb-1">Head Circumference (cm)</label>
-                            <input type="number" step="0.1" id="circumference" min="40" max="70" placeholder="e.g., 57.0" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border" required>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
-                        Calculate & Plot
-                    </button>
-                </form>
-            </div>
-
-            <div class="card bg-white p-6 sm:p-8 rounded-xl border border-gray-100 flex flex-col justify-between">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-3">Centile Chart</h2>
-                <div id="chart-container" class="w-full" style="min-height: 350px;">
-                    <p id="chart-message" class="text-center text-gray-500 mt-16">Enter measurements above to generate the centile chart.</p>
-                </div>
-            </div>
-        </div>
-
-        <div id="results" class="card bg-white p-6 sm:p-8 rounded-xl border border-gray-100 mt-8 hidden">
-            <h2 class="text-2xl font-semibold text-green-700 mb-6 border-b pb-3">Calculated Metrics</h2>
-
-            <div class="space-y-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-                <div class="p-3 bg-gray-50 rounded-lg">
-                    <span class="block text-sm font-medium text-gray-700">Expected Mean HC (Mean):</span>
-                    <span id="mean-output" class="text-xl font-bold text-gray-800">--</span>
-                </div>
-
-                <div class="p-4 bg-indigo-100 rounded-lg">
-                    <span class="block text-sm font-medium text-indigo-800">Calculated Z-Score:</span>
-                    <span id="z-score-output" class="text-2xl font-extrabold text-indigo-800">--</span>
-                </div>
-
-                <div class="p-3 bg-gray-50 rounded-lg">
-                    <span class="block text-sm font-medium text-gray-700">Percentile Rank:</span>
-                    <span id="percentile-output" class="text-xl font-bold text-gray-800">--</span>
-                </div>
-
-                <div class="p-4 rounded-lg" id="interpretation-box">
-                    <h3 class="text-base font-bold text-gray-800 mb-1">Interpretation:</h3>
-                    <p id="interpretation-output" class="text-md font-semibold text-gray-800">--</p>
-                </div>
-            </div>
-        </div>
-
-        <div id="error-message" class="hidden mt-4 p-4 text-sm font-medium text-red-800 rounded-lg bg-red-50 border border-red-200" role="alert">
-            </div>
-
-        <div class="card bg-white p-6 sm:p-8 rounded-xl border border-gray-100 mt-8">
-            <button id="toggle-methodology" class="w-full py-3 px-4 rounded-lg text-left font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition duration-150 ease-in-out flex justify-between items-center">
-                <span>Show Methodology & Documentation</span>
-                <span id="toggle-icon">+</span>
-            </button>
-            <div id="methodology-content" class="mt-4 p-4 border border-gray-200 rounded-lg hidden text-sm">
-                <h3 class="text-lg font-bold mb-3">Methodology Report: Adult Head Circumference Centile Tool (Model 1)</h3>
-
-                <p class="mb-3">This document outlines the statistical methodology and specific formulas used within the interactive web application for calculating adult head circumference (HC) Z-scores and centiles.</p>
-                <p class="mb-6">The tool is based on the linear regression model published in the study: <strong>Centiles for adult head circumference</strong> by Bushby et al. (1992), assuming a **constant standard deviation (SD)** as depicted in the paper's charts.</p>
-
-                <h4 class="text-base font-semibold mb-2 border-b">I. Core Statistical Model</h4>
-                <p>The calculation relies on three confirmed parameters extracted from the paper:</p>
-
-                <ol class="list-decimal pl-6 space-y-1 mb-4">
-                    <li>**Expected Mean Head Circumference ($\mu$):** A gender-specific linear regression equation based on the subject's height.</li>
-                    <li>**Standard Deviation ($\sigma$):** A constant measure of scatter around the mean line (SD = 1.41 cm).</li>
-                    <li>**Z-Score:** The number of standard deviations the subject's measurement falls above or below the mean.</li>
-                </ol>
-
-                <p class="mb-4">The specific parameters used in the regression equations are: Height Slope (0.08673), Male Intercept (42.4), and Female Intercept (41.02).</p>
-
-                <h4 class="text-base font-semibold mb-2 border-b">II. The Calculation Steps (Constant SD)</h4>
-
-                <p class="font-bold">Step 1: Calculate the Expected Mean HC ($\mu$)</p>
-                <p>The mean HC is the expected value for a person of a specific gender and height:</p>
-                <p class="font-mono bg-gray-100 p-2 rounded-md">Males: $\mu = 42.4 + (0.08673 \times \text{Height in cm})$</p>
-                <p class="font-mono bg-gray-100 mb-4 p-2 rounded-md">Females: $\mu = 41.02 + (0.08673 \times \text{Height in cm})$</p>
-
-                <p class="font-bold">Step 2: Calculate the Z-Score</p>
-                <p>The Z-Score (Z) is calculated using the measured HC, the mean HC, and the constant SD:</p>
-                <p class="font-mono bg-gray-100 mb-4 p-2 rounded-md">Z = (Measured HC - $\mu$) / 1.41</p>
-
-                <p class="font-bold">Step 3: Calculate the Centile Rank</p>
-                <p class="mb-4">The centile rank (percentile) is derived by converting the Z-score using the Cumulative Distribution Function ($\text{CDF}$) of the standard normal distribution, using the `jStat.normal.cdf` function.</p>
-
-                <h4 class="text-base font-semibold mb-2 border-b">III. Interpretation Thresholds</h4>
-                <p class="mb-2">The thresholds below are used to provide the interpretation text and color-coding in the results box:</p>
-                <ul class="list-disc pl-6 space-y-1">
-                    <li>**Z &gt; +3.0 SD:** Head circumference is extremely large for stature. (Red)</li>
-                    <li>**Z &gt; +2.0 to &le; +3.0 SD:** Head circumference is large for stature. (Red)</li>
-                    <li>**Z &gt; +1.5 to &le; +2.0 SD:** Head circumference is above the expected average. (Yellow)</li>
-                    <li>**Z = -1.5 to Z = +1.5 SD:** Head circumference is within the expected average range. (Green)</li>
-                    <li>**Z &lt; -1.5 to &ge; -2.0 SD:** Head circumference is below the expected average. (Yellow)</li>
-                    <li>**Z &lt; -2.0 SD:** Head circumference is significantly small for stature. (Red)</li>
-                </ul>
-            </div>
-        </div>
-
-    </div>
-
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const form = document.getElementById('circumference-form');
@@ -222,7 +20,7 @@
 
             let isConverting = false;
 
-            // --- CHART SETUP ---
+            // --- CHART SETUP (No changes needed here) ---
             let svg, xScale, yScale;
             const margin = { top: 20, right: 25, bottom: 40, left: 50 };
             let width, height;
@@ -393,8 +191,6 @@
                 else { errorMessageDiv.classList.add('hidden'); }
             }
 
-            // --- zScoreToPercentile function removed ---
-
             // Main Calculation Function (Model 1 - Constant SD, using jStat)
             function calculateCircumference(gender, height, circumference) {
                 let meanHC;
@@ -412,14 +208,23 @@
                 // *** Use jStat for accurate percentile calculation ***
                 const percentile = jStat.normal.cdf(zScore, 0, 1) * 100;
 
-                let interpretation = (zScore > 3.0) ? `Z > +3.0 SD. Extremely large for stature.` :
-                                     (zScore < -2.0) ? `Z < -2.0 SD. Significantly small for stature.` :
-                                     (zScore > 2.0) ? `Z is +2.0 to +3.0 SD. Large for stature.` :
-                                     (zScore > 1.5) ? `Z is +1.5 to +2.0 SD. Above average.` :
-                                     (zScore < -1.5) ? `Z is -1.5 to -2.0 SD. Below average.` :
-                                     `Z is -1.5 to +1.5 SD. Within average range.`;
+                // *** FINAL CORRECTED INTERPRETATION LOGIC ***
+                let interpretation = "";
 
-                return { zScore, percentile, interpretation, meanHC }; // Removed dynamicSD from return
+                if (zScore > 3.0) { 
+                    interpretation = `Z > +3.0 SD. SEVERE MACROCEPHALY.`;
+                } else if (zScore < -3.0) { 
+                    interpretation = `Z < -3.0 SD. SEVERE MICROCEPHALY.`;
+                } else if (zScore > 2.0) { 
+                    interpretation = `Z > +2.0 SD. MACROCEPHALY. Requires Clinical Review.`;
+                } else if (zScore < -2.0) { 
+                    interpretation = `Z < -2.0 SD. MICROCEPHALY. Requires Clinical Review.`;
+                } else {
+                    // This covers the entire clinically expected range from -2.0 to +2.0 SD
+                    interpretation = `Head circumference is within the typical expected range (Normocephaly).`;
+                }
+
+                return { zScore, percentile, interpretation, meanHC };
             }
 
             // --- FORM SUBMISSION ---
@@ -438,7 +243,6 @@
                 }
 
                 try {
-                    // Pass SD=1.41 to calculation
                     const { zScore, percentile, interpretation, meanHC } = calculateCircumference(gender, heightCm, circumference);
                     document.getElementById('mean-output').textContent = meanHC.toFixed(2) + ' cm';
                     document.getElementById('z-score-output').textContent = zScore.toFixed(2);
@@ -447,9 +251,16 @@
 
                     const interpBox = document.getElementById('interpretation-box');
                     interpBox.className = 'p-4 rounded-lg border'; // Reset classes
-                    if (zScore > 2.0 || zScore < -2.0) interpBox.classList.add('bg-red-100', 'border-red-300');
-                    else if (zScore > 1.5 || zScore < -1.5) interpBox.classList.add('bg-yellow-100', 'border-yellow-300');
-                    else interpBox.classList.add('bg-green-100', 'border-green-300');
+                    
+                    // *** FINAL CORRECTED COLOR-CODING LOGIC ***
+                    if (zScore > 2.0 || zScore < -2.0) {
+                         interpBox.classList.add('bg-red-100', 'border-red-300'); // Macro/Microcephaly
+                    } else if (zScore > 1.5 || zScore < -1.5) {
+                         interpBox.classList.add('bg-yellow-100', 'border-yellow-300'); // Caution Zone
+                    } else {
+                         interpBox.classList.add('bg-green-100', 'border-green-300'); // Normocephaly
+                    }
+                    // *****************************************
 
                     resultsDiv.classList.remove('hidden');
                     setupChart(gender);
@@ -482,5 +293,3 @@
 
         });
     </script>
-</body>
-</html>

@@ -173,25 +173,25 @@
             <div id="methodology-content" class="mt-4 p-4 border border-gray-200 rounded-lg hidden text-sm">
                 <h3 class="text-lg font-bold mb-3">Methodology Report: Adult Head Circumference Centile Tool (Model 1)</h3>
 
-                <p class="mb-3">This tool is based on the linear regression model published in the study: <strong>Bushby et al. (1992)</strong>, assuming a **constant Standard Deviation ($\sigma$)** as justified by the authors' final analysis.</p>
+                <p class="mb-3">This tool is based on the linear regression model published in the study: <strong>Bushby et al. (1992)</strong>, assuming a **constant Standard Deviation (\(\sigma\))** as justified by the authors' final analysis.</p>
 
                 <h4 class="text-base font-semibold mb-2 border-b">I. Core Statistical Model</h4>
                 <p>The calculation relies on three confirmed parameters extracted from the paper:</p>
 
                 <ol class="list-decimal pl-6 space-y-1 mb-4">
-                    <li>**Expected Mean Head Circumference ($\mu$):** A gender-specific linear regression equation based on the subject's height.</li>
-                    <li>**Standard Deviation ($\sigma$):** A constant measure of scatter around the mean line ($\mathbf{\sigma = 1.41 \text{ cm}}$).</li>
+                    <li>**Expected Mean Head Circumference (\(\mu\)):** A gender-specific linear regression equation based on the subject's height.</li>
+                    <li>**Standard Deviation (\(\sigma\)):** A constant measure of scatter around the mean line (\(\mathbf{\sigma = 1.41 \text{ cm}}\)).</li>
                     <li>**Z-Score:** The number of standard deviations the subject's measurement falls above or below the mean.</li>
                 </ol>
 
                 <h4 class="text-base font-semibold mb-2 border-b">II. The Calculation Steps (Constant SD)</h4>
 
-                <p class="font-bold">Step 1: Calculate the Expected Mean HC ($\mu$)</p>
+                <p class="font-bold">Step 1: Calculate the Expected Mean HC (\(\mu\))</p>
                 <p class="font-mono bg-gray-100 p-2 rounded-md">
-                    Males: $$\mu = 42.4 + (0.08673 \times \text{Height in cm})$$
+                    $$\mu = 42.4 + (0.08673 \times \text{Height in cm})$$
                 </p>
                 <p class="font-mono bg-gray-100 mb-4 p-2 rounded-md">
-                    Females: $$\mu = 41.02 + (0.08673 \times \text{Height in cm})$$
+                    $$\mu = 41.02 + (0.08673 \times \text{Height in cm})$$
                 </p>
 
                 <p class="font-bold">Step 2: Calculate the Z-Score</p>
@@ -202,14 +202,14 @@
                 </p>
 
                 <p class="font-bold">Step 3: Calculate the Centile Rank</p>
-                <p class="mb-4">The centile rank (percentile) is derived by converting the Z-score using the highly accurate **Cumulative Distribution Function ($\Phi$)** of the Standard Normal Distribution: $$P = \Phi(Z) \times 100$$</p>
+                <p class="mb-4">The centile rank (percentile) is derived by converting the Z-score using the highly accurate **Cumulative Distribution Function (\(\Phi\))** of the Standard Normal Distribution: $$P = \Phi(Z) \times 100$$</p>
 
-                <h4 class="text-base font-semibold mb-2 border-b">III. Interpretation Thresholds (Clinical Standard: $\mathbf{\pm 2.0 \text{ SD}}$)</h4>
-                <p class="mb-2">The thresholds below reflect the standard clinical $\pm 2.0 \text{ SD}$ criteria for abnormality:</p>
+                <h4 class="text-base font-semibold mb-2 border-b">III. Interpretation Thresholds (Clinical Standard: \(\mathbf{\pm 2.0 \text{ SD}}\))</h4>
+                <p class="mb-2">The thresholds below reflect the standard clinical \(\pm 2.0 \text{ SD}\) criteria for abnormality:</p>
                 <ul class="list-disc pl-6 space-y-1">
-                    <li>**Z $\mathbf{\geq +2.0 \text{ SD}}$:** Head circumference is **significantly large** for stature (Macrocephaly). (Red)</li>
-                    <li>**Z $\mathbf{< -2.0 \text{ SD}}$:** Head circumference is **significantly small** for stature (Microcephaly). (Red)</li>
-                    <li>**Z between $\mathbf{-2.0 \text{ SD}}$ and $\mathbf{+2.0 \text{ SD}}$:** Head circumference is **within the expected average range** (Normocephaly). (Green)</li>
+                    <li>**Z \(\mathbf{\geq +2.0 \text{ SD}}\):** Head circumference is **significantly large** for stature (Macrocephaly). (Red)</li>
+                    <li>**Z \(\mathbf{< -2.0 \text{ SD}}\):** Head circumference is **significantly small** for stature (Microcephaly). (Red)</li>
+                    <li>**Z between \(\mathbf{-2.0 \text{ SD}}\) and \(\mathbf{+2.0 \text{ SD}}\):** Head circumference is **within the expected average range** (Normocephaly). (Green)</li>
                 </ul>
             </div>
         </div>
@@ -327,6 +327,7 @@
                 const zScore = (circumference - mu) / SD;
 
                 // Step 3: Calculate Centile Rank
+                // jStat.normal.cdf calculates the cumulative distribution function for the standard normal (Z=0, SD=1)
                 const percentile = jStat.normal.cdf(zScore, 0, 1) * 100;
 
                 // Step 4: Determine Interpretation (STRICT +/- 2.0 SD)
@@ -554,4 +555,3 @@
     </script>
 </body>
 </html>
-

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Adult Head Circumference Tool</title>
 
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data:;">
 
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -191,7 +191,7 @@
 
                 <ol class="list-decimal pl-6 space-y-1 mb-4">
                     <li>**Expected Mean Head Circumference (\(\mu\)):** A gender-specific linear regression equation based on the subject's height.</li>
-                    <li>**Standard Deviation (\(\sigma\)):** A constant measure of scatter around the mean line (\(\mathbf{\sigma = 1.41 \text{ cm}}\export_text\)).</li>
+                    <li>**Standard Deviation (\(\sigma\)):** A constant measure of scatter around the mean line (\(\mathbf{\sigma = 1.41 \text{ cm}}\)).</li>
                     <li>**Z-Score:** The number of standard deviations the subject's measurement falls above or below the mean.</li>
                 </ol>
 
@@ -222,3 +222,236 @@
                     <li>**Z \(\mathbf{< -2.0 \text{ SD}}\):** Head circumference is **significantly small** for stature (Microcephaly). (Red)</li>
                     <li>**Z between \(\mathbf{-2.0 \text{ SD}}\) and \(\mathbf{+2.0 \text{ SD}}\):** Head circumference is **within the expected average range** (Normocephaly). (Green)</li>
                 </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('circumference-form');
+            const resultsDiv = document.getElementById('results');
+            const errorMessageDiv = document.getElementById('error-message');
+            const chartContainer = document.getElementById('chart-container');
+            const calculatingMessage = document.getElementById('calculating-message');
+
+            const genderInput = document.getElementById('gender');
+            const circumferenceInput = document.getElementById('circumference');
+            const heightFtInput = document.getElementById('height-ft');
+            const heightInInput = document.getElementById('height-in');
+            const heightCmInput = document.getElementById('height-cm');
+            const clearButton = document.getElementById('clear-button');
+
+            // --- CONSTANTS (Model 1) ---
+            const SD = 1.41; // *** Constant Standard Deviation - FIXED ***
+            const SLOPE = 0.08673;
+            const INTERCEPTS = { male: 42.4, female: 41.02 };
+            const Z_SCORES = { 3: -1.88, 10: -1.28, 25: -0.67, 50: 0, 75: 0.67, 90: 1.28, 97: 1.88 };
+
+            // *** CLINICAL THRESHOLD CONSTANTS for JavaScript logic (STRICT +/- 2.0 SD) ***
+            const MACRO_RED_Z = 2.0;
+            const MICRO_RED_Z = -2.0;
+            
+            const CM_PER_FOOT = 30.48;
+            const CM_PER_INCH = 2.54;
+
+            let isConverting = false;
+            
+            // ----------------------------------------------------------------------
+            // INITIAL SETUP: Clear the form on load & Clear button handler
+            // ----------------------------------------------------------------------
+            function resetForm() {
+                genderInput.value = "";
+                circumferenceInput.value = "";
+                heightFtInput.value = "";
+                heightInInput.value = "";
+                heightCmInput.value = "";
+                
+                resultsDiv.classList.add('hidden');
+                errorMessageDiv.classList.add('hidden');
+                d3.select("#subject-marker-group").attr("opacity", 0);
+                d3.select("#intersection-lines-group").attr("opacity", 0);
+                d3.select("#chart-message").text("Enter measurements above to generate the centile chart.");
+            }
+            
+            resetForm(); // Call on load
+
+            // ----------------------------------------------------------------------
+            // CONVERSION & VALIDATION FUNCTIONS
+            // ----------------------------------------------------------------------
+
+            function convertFtInToCm(ft, inches) {
+                return (ft * 12 + inches) * CM_PER_INCH;
+            }
+
+            function getValidatedHeightCm() {
+                let cm = parseFloat(heightCmInput.value);
+                const ft = parseFloat(heightFtInput.value);
+                const inches = parseFloat(heightInInput.value);
+
+                if (!isNaN(cm) && cm >= 140 && cm <= 200) {
+                    return cm;
+                }
+                
+                if (!isNaN(ft) && !isNaN(inches)) {
+                    cm = convertFtInToCm(ft, inches);
+                    if (cm >= 140 && cm <= 200) {
+                        return cm;
+                    }
+                }
+                
+                return null;
+            }
+
+            function updateHeightInputs(sourceInput, value) {
+                if (isConverting) return;
+                isConverting = true;
+                
+                if (sourceInput === 'cm' && !isNaN(value)) {
+                    const totalInches = value / CM_PER_INCH;
+                    heightFtInput.value = Math.floor(totalInches / 12);
+                    heightInInput.value = (totalInches % 12).toFixed(1);
+                } else if ((sourceInput === 'ft' || sourceInput === 'in') && !isNaN(parseFloat(heightFtInput.value)) && !isNaN(parseFloat(heightInInput.value))) {
+                    const cm = convertFtInToCm(parseFloat(heightFtInput.value), parseFloat(heightInInput.value));
+                    heightCmInput.value = cm.toFixed(1);
+                }
+                
+                isConverting = false;
+            }
+
+            // Event listeners for height conversion
+            heightCmInput.addEventListener('input', () => updateHeightInputs('cm', parseFloat(heightCmInput.value)));
+            heightFtInput.addEventListener('input', () => updateHeightInputs('ft', parseFloat(heightFtInput.value)));
+            heightInInput.addEventListener('input', () => updateHeightInputs('in', parseFloat(heightInInput.value)));
+            
+            // Clear button listener
+            clearButton.addEventListener('click', resetForm);
+
+            // ----------------------------------------------------------------------
+            // CORE CALCULATION
+            // ----------------------------------------------------------------------
+            function calculateCircumference(gender, height, circumference) {
+                // Step 1: Calculate Expected Mean HC (mu)
+                const mu = INTERCEPTS[gender] + (SLOPE * height);
+
+                // Step 2: Calculate Z-Score
+                const zScore = (circumference - mu) / SD;
+
+                // Step 3: Calculate Centile Rank
+                const percentile = jStat.normal.cdf(zScore, 0, 1) * 100;
+
+                // Step 4: Determine Interpretation (STRICT +/- 2.0 SD)
+                let classification = '';
+                let interpretationClass = '';
+                
+                if (zScore >= MACRO_RED_Z) {
+                    classification = `Significantly large HC for stature (Macrocephaly).`;
+                    interpretationClass = 'bg-red-200 text-red-900';
+                } else if (zScore < MICRO_RED_Z) {
+                    classification = `Significantly small HC for stature (Microcephaly).`;
+                    interpretationClass = 'bg-red-200 text-red-900';
+                } else {
+                    classification = `Within the expected average range (Normocephaly).`;
+                    interpretationClass = 'bg-green-200 text-green-900';
+                }
+                
+                let interpretation = `Z-Score of ${zScore.toFixed(2)} SD (${percentile.toFixed(1)}%). ${classification}`;
+
+                return {
+                    mu: mu,
+                    zScore: zScore,
+                    percentile: percentile,
+                    interpretation: interpretation,
+                    interpretationClass: interpretationClass
+                };
+            }
+
+            // ----------------------------------------------------------------------
+            // CHART SETUP 
+            // ----------------------------------------------------------------------
+            let svg, xScale, yScale;
+            const margin = { top: 20, right: 25, bottom: 40, left: 50 };
+            let width, height;
+
+            function makeXGridlines() { return d3.axisBottom(xScale).ticks(12); }
+            function makeYGridlines() { return d3.axisLeft(yScale).ticks(13); }
+
+            function setupChart(gender) {
+                chartContainer.innerHTML = '';
+
+                const containerWidth = chartContainer.clientWidth;
+                width = containerWidth - margin.left - margin.right;
+                height = 400 - margin.top - margin.bottom;
+
+                const xMin = 140; const xMax = 200;
+                const yMin = 50; const yMax = 65; // Boosted to 65 to prevent visual clipping
+
+                xScale = d3.scaleLinear().domain([xMin, xMax]).range([0, width]);
+                yScale = d3.scaleLinear().domain([yMin, yMax]).range([height, 0]);
+
+                svg = d3.select("#chart-container").append("svg")
+                    .attr("viewBox", `0 0 ${containerWidth} 400`).append("g")
+                    .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+                svg.append("g").attr("class", "grid").attr("transform", `translate(0, ${height})`)
+                    .call(makeXGridlines().tickSize(-height).tickFormat(""));
+                svg.append("g").attr("class", "grid")
+                    .call(makeYGridlines().tickSize(-width).tickFormat(""));
+
+                const lineGenerator = d3.line().x(d => xScale(d.height)).y(d => yScale(d.hc));
+
+                // Generate Centile Data Points using CONSTANT SD (Model 1)
+                const centileData = Object.entries(Z_SCORES).map(([centile, z]) => {
+                    const dataPoints = [];
+                    for (let h = xMin; h <= xMax; h += 1) {
+                        const meanHC = INTERCEPTS[gender] + (SLOPE * h);
+                        const hc = meanHC + (z * SD);
+                        dataPoints.push({ height: h, hc: hc, centile: centile, z: z });
+                    }
+                    return dataPoints;
+                });
+
+                // Draw Centile Lines
+                centileData.forEach(data => {
+                    const centile = parseInt(data[0].centile);
+                    let strokeColor = '#1f2937';
+                    let strokeDash = (centile === 3 || centile === 25 || centile === 75 || centile === 97) ? '8, 4' : '0';
+                    svg.append("path").datum(data).attr("d", lineGenerator)
+                        .style("fill", "none").style("stroke", strokeColor)
+                        .style("stroke-width", "2px").style("stroke-dasharray", strokeDash)
+                        .attr("data-centile", centile);
+                    svg.append("text").attr("x", xScale(xMax) + 4).attr("y", yScale(data[data.length - 1].hc))
+                        .attr("dy", "0.3em").attr("font-size", "10px").attr("font-weight", "bold")
+                        .attr("fill", "#6b7280").text(centile);
+                });
+
+                // Draw Axes
+                svg.append("g").attr("class", "x axis").attr("transform", `translate(0, ${height})`)
+                    .call(d3.axisBottom(xScale).ticks(12)).call(g => g.select(".domain").remove());
+                svg.append("g").attr("class", "y axis")
+                    .call(d3.axisLeft(yScale).ticks(13)).call(g => g.select(".domain").remove());
+
+                // Axis Labels
+                svg.append("text").attr("class", "text-sm text-gray-500").attr("text-anchor", "middle")
+                    .attr("x", width / 2).attr("y", height + 35).text("Height (cm)");
+                svg.append("text").attr("class", "text-sm text-gray-500").attr("text-anchor", "middle")
+                    .attr("transform", "rotate(-90)").attr("y", -margin.left + 15).attr("x", -height / 2)
+                    .text("Head Circumference (cm)");
+
+                svg.append("g").attr("id", "intersection-lines-group").attr("opacity", 0);
+
+                // Subject Marker Group
+                const markerSize = 8;
+                const markerGroup = svg.append("g").attr("id", "subject-marker-group").attr("opacity", 0);
+                const marker = markerGroup.append("g").attr("id", "subject-marker").attr("transform", "translate(0,0)");
+                marker.append("line").attr("class", "line").attr("x1", -markerSize).attr("y1", -markerSize).attr("x2", markerSize).attr("y2", markerSize);
+                marker.append("line").attr("class", "line").attr("x1", -markerSize).attr("y1", markerSize).attr("x2", markerSize).attr("y2", -markerSize);
+                markerGroup.append("rect").attr("id", "subject-label-bg").attr("class", "label-bg").attr("width", 1).attr("height", 1).attr("x", 0).attr("y", 0);
+                markerGroup.append("text").attr("id", "subject-label").attr("font-size", "12px").attr("font-weight", "bold").attr("fill", "#1f2937").attr("text-anchor", "middle");
+            }
+
+            function updateIntersectionLines(xPos, yPos, plotHeight) {
+                const intersectionLinesGroup = d3.select("#intersection-lines-group");
+                intersectionLinesGroup.html("");
+                intersectionLinesGroup.append("line").attr("class", "intersection-line")
+                    .attr("x1", xPos).attr("y1", plotHeight).attr("x2", xPos

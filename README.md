@@ -4,12 +4,12 @@ Adult Head Circumference Centile Tool
 An interactive, web-based clinical reference tool for calculating and plotting head circumference centiles in adults, based on the regression model published by Bushby et al. (1992).
 
 
-🔗 Live Tool
+Live Tool
 
 
 
 
-⚠️ Disclaimer: This tool is intended for reference purposes only and does not provide a definitive clinical diagnosis. All clinical decisions should be made by a qualified healthcare professional.
+Disclaimer: This tool is intended for reference purposes only and does not provide a definitive clinical diagnosis. All clinical decisions should be made by a qualified healthcare professional.
 
 
 

@@ -6,19 +6,9 @@
     <title>Adult Head Circumference Tool</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js" 
-            integrity="sha512-WBC0rKsUTYvBMWxZLIqnZcgqn60cSSMzvIZ56MwbEFgcHCkqf656PgNW1vVA04Vh2oVyXiK0fSg1rcTstF51Yg==" 
-            crossorigin="anonymous" 
-            referrerpolicy="no-referrer"></script>
-            
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.6/jstat.min.js" 
-            integrity="sha512-YmX6XmUvSgX9Kgn2S6WfDEZ4bWk66pYwO5vC0S685mR6N6Uo9pW3W4/U3Z8Xm2YyW6ZfG0m9R5U9X6kM6WvHw==" 
-            crossorigin="anonymous" 
-            referrerpolicy="no-referrer"></script>
-            
-    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" 
-            async></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstat/1.9.3/jstat.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     
     <style>
         /* Custom styles */
@@ -93,4 +83,161 @@
 
                     <div>
                         <label for="gender" class="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-                        <select id="gender" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg
+                        <select id="gender" class="mt-1 block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-lg border" required>
+                            <option value="">Select Gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-6">
+                        <div id="height-input-container">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Height</label>
+                            <div class="flex space-x-3">
+                                <input type="number" step="1" id="height-ft" min="4" max="7" placeholder="Feet (e.g., 5)" class="block w-1/3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border">
+                                <input type="number" step="0.1" id="height-in" min="0" max="11.9" placeholder="Inches (e.g., 9)" class="block w-1/3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border">
+                                <input type="number" step="0.1" id="height-cm" min="140" max="200" placeholder="cm (e.g., 175.5)" class="block w-1/3 rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border">
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Enter height in Ft/In or cm. Fields will auto-convert. Range: 140-200 cm.</p>
+                        </div>
+
+                        <div>
+                            <label for="circumference" class="block text-sm font-medium text-gray-700 mb-1">Head Circumference (cm)</label>
+                            <input type="number" step="0.1" id="circumference" min="40" max="70" placeholder="e.g., 57.0" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-3 border">
+                        </div>
+                    </div>
+
+                    <button type="submit" id="calculate-button" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-md text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                        Calculate & Plot
+                    </button>
+                    <button type="button" id="clear-button" class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
+                        Clear Form
+                    </button>
+                </form>
+            </div>
+
+            <div class="card bg-white p-6 sm:p-8 rounded-xl border border-gray-100 flex flex-col justify-between">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-3">Centile Chart</h2>
+                <div id="chart-container" class="w-full" style="min-height: 350px;">
+                    <p id="chart-message" class="text-center text-gray-500 mt-16">Enter measurements above to generate the centile chart.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="results" class="card bg-white p-6 sm:p-8 rounded-xl border border-gray-100 mt-8 hidden">
+            <h2 class="text-2xl font-semibold text-green-700 mb-6 border-b pb-3">Calculated Metrics</h2>
+
+            <div class="space-y-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                <div class="p-3 bg-gray-50 rounded-lg">
+                    <span class="block text-sm font-medium text-gray-700">Expected Mean HC ($\mu$):</span>
+                    <span id="mean-output" class="text-xl font-bold text-gray-800">--</span>
+                </div>
+
+                <div class="p-4 bg-indigo-100 rounded-lg">
+                    <span class="block text-sm font-medium text-indigo-800">Calculated Z-Score:</span>
+                    <span id="z-score-output" class="text-2xl font-extrabold text-indigo-800">--</span>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded-lg">
+                    <span class="block text-sm font-medium text-gray-700">Percentile Rank:</span>
+                    <span id="percentile-output" class="text-xl font-bold text-gray-800">--</span>
+                </div>
+
+                <div class="p-4 rounded-lg" id="interpretation-box">
+                    <h3 class="text-base font-bold text-gray-800 mb-1">Interpretation:</h3>
+                    <p id="interpretation-output" class="text-md font-semibold text-gray-800">--</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="calculating-message" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg shadow-2xl flex items-center space-x-3">
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="text-lg font-medium text-gray-800">Calculating...</p>
+            </div>
+        </div>
+
+        <div id="error-message" class="hidden mt-4 p-4 text-sm font-medium text-red-800 rounded-lg bg-red-50 border border-red-200" role="alert">
+        </div>
+
+        <div class="card bg-white p-6 sm:p-8 rounded-xl border border-gray-100 mt-8">
+            <button id="toggle-methodology" class="w-full py-3 px-4 rounded-lg text-left font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition duration-150 ease-in-out flex justify-between items-center">
+                <span>Show Methodology & Documentation</span>
+                <span id="toggle-icon">+</span>
+            </button>
+            <div id="methodology-content" class="mt-4 p-4 border border-gray-200 rounded-lg hidden text-sm">
+                <h3 class="text-lg font-bold mb-3">Methodology Report: Adult Head Circumference Centile Tool (Model 1)</h3>
+
+                <p class="mb-3">This tool is based on the linear regression model published in the study: <strong>Bushby et al. (1992)</strong>, assuming a **constant Standard Deviation (\(\sigma\))** as justified by the authors' final analysis.</p>
+
+                <h4 class="text-base font-semibold mb-2 border-b">I. Core Statistical Model</h4>
+                <p>The calculation relies on three confirmed parameters extracted from the paper:</p>
+
+                <ol class="list-decimal pl-6 space-y-1 mb-4">
+                    <li>**Expected Mean Head Circumference (\(\mu\)):** A gender-specific linear regression equation based on the subject's height.</li>
+                    <li>**Standard Deviation (\(\sigma\)):** A constant measure of scatter around the mean line (\(\mathbf{\sigma = 1.41 \text{ cm}}\export_text\)).</li>
+                    <li>**Z-Score:** The number of standard deviations the subject's measurement falls above or below the mean.</li>
+                </ol>
+
+                <h4 class="text-base font-semibold mb-2 border-b">II. The Calculation Steps (Constant SD)</h4>
+
+                <p class="font-bold">Step 1: Calculate the Expected Mean HC (\(\mu\))</p>
+                <p class="font-mono bg-gray-100 p-2 rounded-md">
+                    $$\mu = 42.4 + (0.08673 \times \text{Height in cm})$$
+                </p>
+                <p class="font-mono bg-gray-100 mb-4 p-2 rounded-md">
+                    $$\mu = 41.02 + (0.08673 \times \text{Height in cm})$$
+                </p>
+
+                <p class="font-bold">Step 2: Calculate the Z-Score</p>
+                <p>The Z-Score ($Z$) is calculated using the measured HC, the mean $\mu$, and the constant SD ($\sigma$):</p>
+                <p class="font-mono bg-gray-100 mb-4 p-2 rounded-md">
+                    $$Z = \frac{\text{Measured HC} - \mu}{\sigma}$$
+                    $$Z = \frac{\text{Measured HC} - \mu}{1.41}$$
+                </p>
+
+                <p class="font-bold">Step 3: Calculate the Centile Rank</p>
+                <p class="mb-4">The centile rank (percentile) is derived by converting the Z-score using the highly accurate **Cumulative Distribution Function (\(\Phi\))** of the Standard Normal Distribution: $$P = \Phi(Z) \times 100$$</p>
+
+                <h4 class="text-base font-semibold mb-2 border-b">III. Interpretation Thresholds (Clinical Standard: \(\mathbf{\pm 2.0 \text{ SD}}\))</h4>
+                <p class="mb-2">The thresholds below reflect the standard clinical \(\pm 2.0 \text{ SD}\) criteria for abnormality:</p>
+                <ul class="list-disc pl-6 space-y-1">
+                    <li>**Z \(\mathbf{\geq +2.0 \text{ SD}}\):** Head circumference is **significantly large** for stature (Macrocephaly). (Red)</li>
+                    <li>**Z \(\mathbf{< -2.0 \text{ SD}}\):** Head circumference is **significantly small** for stature (Microcephaly). (Red)</li>
+                    <li>**Z between \(\mathbf{-2.0 \text{ SD}}\) and \(\mathbf{+2.0 \text{ SD}}\):** Head circumference is **within the expected average range** (Normocephaly). (Green)</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('circumference-form');
+            const resultsDiv = document.getElementById('results');
+            const errorMessageDiv = document.getElementById('error-message');
+            const chartContainer = document.getElementById('chart-container');
+            const calculatingMessage = document.getElementById('calculating-message');
+
+            const genderInput = document.getElementById('gender');
+            const circumferenceInput = document.getElementById('circumference');
+            const heightFtInput = document.getElementById('height-ft');
+            const heightInInput = document.getElementById('height-in');
+            const heightCmInput = document.getElementById('height-cm');
+            const clearButton = document.getElementById('clear-button');
+
+            // --- CONSTANTS (Model 1) ---
+            const SD = 1.41; 
+            const SLOPE = 0.08673;
+            const INTERCEPTS = { male: 42.4, female: 41.02 };
+            const Z_SCORES = { 3: -1.88, 10: -1.28, 25: -0.67, 50: 0, 75: 0.67, 90: 1.28, 97: 1.88 };
+
+            const MACRO_RED_Z = 2.0;
+            const MICRO_RED_Z = -2.0;
+            
+            const CM_PER_FOOT = 30.48;
+            const CM

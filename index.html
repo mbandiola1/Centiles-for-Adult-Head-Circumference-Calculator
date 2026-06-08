@@ -24,24 +24,6 @@
         .axis line { stroke: #ccc; }
         .axis path { stroke: #ccc; }
 
-        /* Style for the gridlines */
-        .grid line {
-            stroke: #d1d5db;
-            shape-rendering: crispEdges;
-        }
-        .grid path {
-            stroke-width: 0;
-        }
-
-        /* Style for the 'X' marker */
-        #subject-marker {
-            transition: opacity 0.5s;
-        }
-        #subject-marker .line {
-            stroke: #ef4444;
-            stroke-width: 4;
-            stroke-linecap: round;
-        }
         .intersection-line {
             stroke-dasharray: 4, 2;
             transition: opacity 0.5s;
@@ -49,10 +31,10 @@
 
         /* Style for the background box behind the subject label */
         .label-bg {
-            fill: rgba(255, 255, 255, 0.85);
+            fill: rgba(255, 255, 255, 0.95);
             stroke: #ef4444;
-            stroke-width: 1;
-            rx: 3;
+            stroke-width: 1.5;
+            rx: 4;
         }
     </style>
 </head>
@@ -128,7 +110,7 @@
 
             <div class="space-y-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="p-3 bg-gray-50 rounded-lg">
-                    <span class="block text-sm font-medium text-gray-700">Expected Mean HC ($\mu$):</span>
+                    <span class="block text-sm font-medium text-gray-700">Expected Mean HC (\(\mu\)):</span>
                     <span id="mean-output" class="text-xl font-bold text-gray-800">--</span>
                 </div>
 
@@ -150,6 +132,33 @@
         </div>
         
         <div id="error-message" class="hidden mt-4 p-4 text-sm font-medium text-red-800 rounded-lg bg-red-50 border border-red-200" role="alert"></div>
+
+        <div class="card bg-white p-6 sm:p-8 rounded-xl border border-gray-100 mt-8">
+            <button id="toggle-methodology" class="w-full py-3 px-4 rounded-lg text-left font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition duration-150 ease-in-out flex justify-between items-center">
+                <span>Show Methodology & Documentation</span>
+                <span id="toggle-icon">+</span>
+            </button>
+            <div id="methodology-content" class="mt-4 p-4 border border-gray-200 rounded-lg hidden text-sm">
+                <h3 class="text-lg font-bold mb-3">Methodology Report: Adult Head Circumference Centile Tool</h3>
+                <p class="mb-3">This tool is based on the linear regression model published in the study: <strong>Bushby et al. (1992)</strong>, assuming a <strong>constant Standard Deviation (\(\sigma\))</strong> as justified by the authors' final analysis.</p>
+                <h4 class="text-base font-semibold mb-2 border-b">I. Core Statistical Model</h4>
+                <p>The calculation relies on three confirmed parameters extracted from the paper:</p>
+                <ol class="list-decimal pl-6 space-y-1 mb-4">
+                    <li><strong>Expected Mean Head Circumference (\(\mu\)):</strong> A gender-specific linear regression equation based on the subject's height.</li>
+                    <li><strong>Standard Deviation (\(\sigma\)):</strong> A constant measure of scatter around the mean line (\(\sigma = 1.41 \text{ cm}\)).</li>
+                    <li><strong>Z-Score:</strong> The number of standard deviations the subject's measurement falls above or below the mean.</li>
+                </ol>
+                <h4 class="text-base font-semibold mb-2 border-b">II. The Calculation Steps</h4>
+                <p class="font-bold">Step 1: Calculate the Expected Mean HC (\(\mu\))</p>
+                <p class="font-mono bg-gray-100 p-2 rounded-md">Male: \(\mu = 42.4 + (0.08673 \times \text{Height in cm})\)</p>
+                <p class="font-mono bg-gray-100 mb-4 p-2 rounded-md">Female: \(\mu = 41.02 + (0.08673 \times \text{Height in cm})\)</p>
+                <p class="font-bold">Step 2: Calculate the Z-Score</p>
+                <p class="font-mono bg-gray-100 mb-4 p-2 rounded-md">$$Z = \frac{\text{Measured HC} - \mu}{1.41}$$</p>
+                <p class="font-bold">Step 3: Calculate the Centile Rank</p>
+                <p class="mb-4">The centile rank (percentile) is derived by converting the Z-score using the Cumulative Distribution Function (\(\Phi\)) of the Standard Normal Distribution.</p>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -167,6 +176,14 @@
         const resultsDiv = document.getElementById('results');
         const clearBtn = document.getElementById('clear-button');
         const errorDiv = document.getElementById('error-message');
+
+        // Toggle Methodology Listener
+        document.getElementById('toggle-methodology').addEventListener('click', function() {
+            const content = document.getElementById('methodology-content');
+            const icon = document.getElementById('toggle-icon');
+            const isHidden = content.classList.toggle('hidden');
+            icon.textContent = isHidden ? '+' : '-';
+        });
 
         // Unit Auto-Conversion Listeners
         heightFt.addEventListener('input', updateFromImperial);
@@ -237,10 +254,10 @@
             }
 
             resultsDiv.classList.remove('hidden');
-            renderChart(gender, height, hc);
+            renderChart(gender, height, hc, percentileRank);
         });
 
-        function renderChart(gender, userHeight, userHC) {
+        function renderChart(gender, userHeight, userHC, computedCentile) {
             const container = document.getElementById('chart-container');
             container.innerHTML = ''; // Wipe loading message
             
@@ -255,11 +272,13 @@
                 .append("g")
                 .attr("transform", `translate(${margin.left},${margin.top})`);
 
-            // X scale setup (Height range based on Bushby limits)
+            // X scale setup
             const x = d3.scaleLinear().domain([140, 200]).range([0, width]);
             svg.append("g")
                 .attr("transform", `translate(0,${height})`)
                 .call(d3.axisBottom(x).ticks(6))
+                .call(g => g.select(".domain").attr("stroke", "#9ca3af")) 
+                .call(g => g.selectAll(".tick line").attr("stroke", "#9ca3af"))
                 .append("text")
                 .attr("x", width / 2)
                 .attr("y", 40)
@@ -268,10 +287,12 @@
                 .style("text-anchor", "middle")
                 .text("Height (cm)");
 
-            // Y scale setup (HC display range)
-            const y = d3.scaleLinear().domain([50, 64]).range([height, 0]);
+            // Y scale setup
+            const y = d3.scaleLinear().domain([50, 65]).range([height, 0]);
             svg.append("g")
                 .call(d3.axisLeft(y))
+                .call(g => g.select(".domain").attr("stroke", "#9ca3af")) 
+                .call(g => g.selectAll(".tick line").attr("stroke", "#9ca3af"))
                 .append("text")
                 .attr("transform", "rotate(-90)")
                 .attr("y", -40)
@@ -281,23 +302,73 @@
                 .style("text-anchor", "middle")
                 .text("Head Circumference (cm)");
 
+            // Regression base variables
             const intercept = (gender === 'male') ? MALE_INTERCEPT : FEMALE_INTERCEPT;
-            const dataPoints = d3.range(140, 201, 5);
 
-            // Generates path points based on standard deviations
-            const lineGen = (sdMultiplier) => d3.line()
-                .x(d => x(d))
-                .y(d => y(intercept + (SLOPE * d) + (sdMultiplier * SD)));
+            // Exact Z-scores mapping to the centiles shown in the original paper
+            // Styles mimic the paper: Dotted (3,97), Solid (10,90), Dashed (25,75), Thick Solid (50)
+            const paperCentiles = [
+                { rank: 97, z: 1.8808, style: "2,4", color: "#6b7280", strokeW: 1.5 },
+                { rank: 90, z: 1.2816, style: "none", color: "#6b7280", strokeW: 1.5 },
+                { rank: 75, z: 0.6745, style: "6,6", color: "#6b7280", strokeW: 1.5 },
+                { rank: 50, z: 0, style: "none", color: "#4f46e5", strokeW: 2 }, // Mean
+                { rank: 25, z: -0.6745, style: "6,6", color: "#6b7280", strokeW: 1.5 },
+                { rank: 10, z: -1.2816, style: "none", color: "#6b7280", strokeW: 1.5 },
+                { rank: 3, z: -1.8808, style: "2,4", color: "#6b7280", strokeW: 1.5 }
+            ];
 
-            // Mean line
-            svg.append("path").datum(dataPoints).attr("fill", "none").attr("stroke", "#4f46e5").attr("stroke-width", 2).attr("d", lineGen(0));
-            // +2 SD line
-            svg.append("path").datum(dataPoints).attr("fill", "none").attr("stroke", "#9ca3af").attr("stroke-dasharray", "4").attr("d", lineGen(2));
-            // -2 SD line
-            svg.append("path").datum(dataPoints).attr("fill", "none").attr("stroke", "#9ca3af").attr("stroke-dasharray", "4").attr("d", lineGen(-2));
+            // Loop and explicitly draw SVG <line> elements to bypass D3 path limitations
+            paperCentiles.forEach(c => {
+                
+                // Calculate Exact Y values for the start (X=140) and end (X=200) points
+                const yStart = intercept + (SLOPE * 140) + (c.z * SD);
+                const yEnd = intercept + (SLOPE * 200) + (c.z * SD);
 
-            // Plot target user's coordinate mapping if inside visualization limits
-            if (userHeight >= 140 && userHeight <= 200 && userHC >= 50 && userHC <= 64) {
+                // Draw the perfectly straight line
+                svg.append("line")
+                    .attr("x1", x(140))
+                    .attr("y1", y(yStart))
+                    .attr("x2", x(200))
+                    .attr("y2", y(yEnd))
+                    .attr("stroke", c.color)
+                    .attr("stroke-width", c.strokeW)
+                    .attr("stroke-dasharray", c.style !== "none" ? c.style : null);
+
+                // Number label at the right end of the line
+                svg.append("text")
+                    .attr("x", x(200) + 4)
+                    .attr("y", y(yEnd))
+                    .attr("dy", "0.32em")
+                    .attr("fill", "#374151")
+                    .attr("font-size", "11px")
+                    .attr("font-weight", "600")
+                    .text(c.rank);
+            });
+
+            // Plot target user's coordinate mapping & Intercepting Drop Lines
+            if (userHeight >= 140 && userHeight <= 200 && userHC >= 50 && userHC <= 65) {
+                
+                // Vertical intercept line (Drops to X axis)
+                svg.append("line")
+                    .attr("class", "intersection-line")
+                    .attr("x1", x(userHeight))
+                    .attr("y1", y(userHC))
+                    .attr("x2", x(userHeight))
+                    .attr("y2", height)
+                    .attr("stroke", "#ef4444")
+                    .attr("stroke-width", 1.5);
+
+                // Horizontal intercept line (Drops to Y axis)
+                svg.append("line")
+                    .attr("class", "intersection-line")
+                    .attr("x1", x(userHeight))
+                    .attr("y1", y(userHC))
+                    .attr("x2", 0)
+                    .attr("y2", y(userHC))
+                    .attr("stroke", "#ef4444")
+                    .attr("stroke-width", 1.5);
+
+                // Main Coordinate Dot
                 svg.append("circle")
                     .attr("cx", x(userHeight))
                     .attr("cy", y(userHC))
@@ -305,6 +376,31 @@
                     .attr("fill", "#ef4444")
                     .attr("stroke", "#fff")
                     .attr("stroke-width", 2);
+
+                // Floating Computed Centile Label
+                const labelGroup = svg.append("g")
+                    .attr("transform", `translate(${x(userHeight) + 12}, ${y(userHC) - 20})`);
+                
+                // Draw text invisibly first to calculate its exact width bounding box
+                const labelText = labelGroup.append("text")
+                    .text(`${computedCentile}th Centile`)
+                    .attr("font-size", "12px")
+                    .attr("font-weight", "bold")
+                    .attr("fill", "#ef4444")
+                    .attr("text-anchor", "start")
+                    .attr("alignment-baseline", "middle")
+                    .attr("dx", "6")
+                    .attr("dy", "1");
+                
+                const bbox = labelText.node().getBBox();
+
+                // Insert the dynamically sized background rectangle BEHIND the text
+                labelGroup.insert("rect", "text")
+                    .attr("class", "label-bg")
+                    .attr("x", bbox.x - 4)
+                    .attr("y", bbox.y - 4)
+                    .attr("width", bbox.width + 12)
+                    .attr("height", bbox.height + 8);
             }
         }
     </script>
